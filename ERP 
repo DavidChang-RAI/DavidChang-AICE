@@ -1,0 +1,199 @@
+ERP-MILS/
+├── app.py
+├── models.py
+├── templates/
+│   ├── index.html
+│   ├── hr.html
+│   ├── supply_chain.html
+│   ├── sales.html
+│   └── communication.html
+├── static/
+│   └── style.css
+├── migrations/
+└── requirements.txt
+Flask==2.0.1
+Flask-SQLAlchemy==2.5.1
+Flask-Migrate==3.1.0
+
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///erp_mils.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+from models import Employee, Product, Sale, Communication
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/hr', methods=['GET', 'POST'])
+def hr():
+    if request.method == 'POST':
+        name = request.form['name']
+        position = request.form['position']
+        new_employee = Employee(name=name, position=position)
+        db.session.add(new_employee)
+        db.session.commit()
+        return redirect(url_for('hr'))
+    employees = Employee.query.all()
+    return render_template('hr.html', employees=employees)
+
+@app.route('/supply_chain', methods=['GET', 'POST'])
+def supply_chain():
+    if request.method == 'POST':
+        name = request.form['name']
+        quantity = request.form['quantity']
+        new_product = Product(name=name, quantity=quantity)
+        db.session.add(new_product)
+        db.session.commit()
+        return redirect(url_for('supply_chain'))
+    products = Product.query.all()
+    return render_template('supply_chain.html', products=products)
+
+@app.route('/sales', methods=['GET', 'POST'])
+def sales():
+    if request.method == 'POST':
+        product_id = request.form['product_id']
+        quantity = request.form['quantity']
+        new_sale = Sale(product_id=product_id, quantity=quantity)
+        db.session.add(new_sale)
+        db.session.commit()
+        return redirect(url_for('sales'))
+    sales = Sale.query.all()
+    products = Product.query.all()
+    return render_template('sales.html', sales=sales, products=products)
+
+@app.route('/communication', methods=['GET', 'POST'])
+def communication():
+    if request.method == 'POST':
+        message = request.form['message']
+        new_communication = Communication(message=message)
+        db.session.add(new_communication)
+        db.session.commit()
+        return redirect(url_for('communication'))
+    communications = Communication.query.all()
+    return render_template('communication.html', communications=communications)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+from app import db
+
+class Employee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    position = db.Column(db.String(100), nullable=False)
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+
+class Sale(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    product = db.relationship('Product', back_populates='sales')
+
+Product.sales = db.relationship('Sale', order_by=Sale.id, back_populates='product')
+
+class Communication(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.Text, nullable=False)
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ERP for MILS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Welcome to ERP for MILS</h1>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('hr') }}">HR</a></li>
+            <li><a href="{{ url_for('supply_chain') }}">Supply Chain</a></li>
+            <li><a href="{{ url_for('sales') }}">Sales</a></li>
+            <li><a href="{{ url_for('communication') }}">Communication</a></li>
+        </ul>
+    </nav>
+</body>
+</html>
+<!-- hr.html (similar structure for other templates) -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>HR</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>HR Management</h1>
+    <form method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name">
+        <label for="position">Position:</label>
+        <input type="text" id="position" name="position">
+        <button type="submit">Add Employee</button>
+    </form>
+    <ul>
+        {% for employee in employees %}
+        <li>{{ employee.name }} - {{ employee.position }}</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>
+body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #333;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin-right: 10px;
+}
+
+form {
+    margin-bottom: 20px;
+}
+
+label {
+    margin-right: 10px;
+}
+
+input {
+    margin-right: 10px;
+}
+
+button {
+    padding: 5px 10px;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+ul li {
+    margin-bottom: 10px;
+}
+
+flask db init
+flask db migrate -m "Initial migration."
+flask db upgrade
